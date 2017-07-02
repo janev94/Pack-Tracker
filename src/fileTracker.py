@@ -2,13 +2,11 @@ import json
 import re
 import time
 import os
+import requests
 
 from watchdog.observers import Observer
 from watchdog.events import PatternMatchingEventHandler
 
-
-cardsOpened = 0
-packsOpened = 0
 
 # lineString has the following format, extracted from HS logs
 # D TIME_INFO EVENT_FIRED: EVENT INFO
@@ -18,10 +16,22 @@ def processCardGained(lineString):
     cardId_regex = re.search('cardId=(.*) type=', lineString)
     card_id = cardId_regex.group(1)
 
-
     #TODO: extract card with following id from (DB/API)
+    response = requests.get(
+        "https://omgvamp-hearthstone-v1.p.mashape.com/cards/" + card_id,
+        headers={
+            # Put your API KEY here
+        }
+    )
+
+    print "Accessed HS API FOR CARD %s, response is: " % card_id
+    print response.json()
+
     global cardsOpened, packsOpened
+
     cardsOpened += 1
+    print "cards opened: %d" % cardsOpened
+
     if cardsOpened % 4 == 0:
         packsOpened += 1
         #update the pack opened json
@@ -54,7 +64,6 @@ class ChangeHandler(PatternMatchingEventHandler):
                 if 'NotifyOfCardGained' in line:
                     processCardGained(line)
                 print "LINE: ", line,
-
 
         self.process(event)
 
