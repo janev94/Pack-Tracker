@@ -21,6 +21,7 @@ def processCardGained(lineString):
         "https://omgvamp-hearthstone-v1.p.mashape.com/cards/" + card_id,
         headers={
             # Put your API KEY here
+            "X-Mashape-Key": ""
         }
     )
 
