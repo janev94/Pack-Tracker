@@ -1,19 +1,38 @@
 import json
+import re
 import time
 import os
 
 from watchdog.observers import Observer
 from watchdog.events import PatternMatchingEventHandler
-from pprint import pprint
+
+
+cardsOpened = 0
+packsOpened = 0
+
+# lineString has the following format, extracted from HS logs
+# D TIME_INFO EVENT_FIRED: EVENT INFO
+# for card gained, the event info is in the form:
+# [name=CARD_NAME cardId=CARD_ID type=CARD_TYPE]
+def processCardGained(lineString):
+    cardId_regex = re.search('cardId=(.*) type=', lineString)
+    card_id = cardId_regex.group(1)
+
+
+    #TODO: extract card with following id from (DB/API)
+    global cardsOpened, packsOpened
+    cardsOpened += 1
+    if cardsOpened % 4 == 0:
+        packsOpened += 1
+        #update the pack opened json
 
 
 class ChangeHandler(PatternMatchingEventHandler):
-    patterns = ["*.*"]
-
     def __init__(self):
         super(ChangeHandler, self).__init__()
 
-    def process(self, event):
+    @staticmethod
+    def process(event):
         '''
         event.event_type: The type of the event as a string.
         event.src_path: Source path of the file system object
@@ -28,17 +47,14 @@ class ChangeHandler(PatternMatchingEventHandler):
 
     def on_modified(self, event):
         if 'Achievements.log' in event.src_path:
-            print "PATH:\n ------\n\n ACH MOD \n\n------"
 
             logfile = open(event.src_path, "r")
             loglines = follow(logfile)
             for line in loglines:
+                if 'NotifyOfCardGained' in line:
+                    processCardGained(line)
                 print "LINE: ", line,
 
-            # f = open('Achievements.log', 'r')
-            # content = f.read()
-            # print content
-            # print "\n\n\n\n"
 
         self.process(event)
 
@@ -61,9 +77,17 @@ def follow(thefile):
             continue
         yield line
 
+
 if __name__ == '__main__':
     f = open('../packTracker.cfg', 'r')
     config = json.loads(f.read())
+    f.close()
+
+    #read previously saved data
+    f = open('../data/packStats.dat', 'r')
+    global packsOpened, cardsOpened
+    packsOpened = json.loads(f.read())['packs opened']
+    cardsOpened = 0
     f.close()
 
     observer = Observer()
@@ -77,5 +101,3 @@ if __name__ == '__main__':
     observer.start()
     while True:
         time.sleep(1)
-
-
