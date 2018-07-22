@@ -7,26 +7,66 @@ import requests
 from watchdog.observers import Observer
 from watchdog.events import PatternMatchingEventHandler
 
+exp_lookup = {
+    'OG': 'Whispers of the Old Gods.dat',
+    'UNG': "Journey to Un'Goro.dat",
+    'GVG': "Goblins vs Gnomes.dat",
+    'AT': "The Grand Tournament.dat",
+    'BRM': "Blackrock Mountain.dat",
+    'NAX': "Naxxramas.dat",
+    'LOE': "The League of Explorers.dat",
+    'CFM': "Mean Streets of Gadgetzan.dat",
+    'EX1': "Classic.dat",
+    'KAR': "One Night in Karazhan.dat",
+}
+
 
 # lineString has the following format, extracted from HS logs
 # D TIME_INFO EVENT_FIRED: EVENT INFO
 # for card gained, the event info is in the form:
 # [name=CARD_NAME cardId=CARD_ID type=CARD_TYPE]
 def processCardGained(lineString):
-    cardId_regex = re.search('cardId=(.*) type=', lineString)
+    cardId_regex = re.search("cardId=(.*) type=", lineString)
     card_id = cardId_regex.group(1)
+    exp_key = card_id[:card_id.index('_')]
+    fname = ''
+    for (k, v) in exp_lookup.iteritems():
+        if exp_key in k:
+            fname = v
+            break
 
-    #TODO: extract card with following id from (DB/API)
-    response = requests.get(
-        "https://omgvamp-hearthstone-v1.p.mashape.com/cards/" + card_id,
-        headers={
-            # Put your API KEY here
-            "X-Mashape-Key": ""
-        }
-    )
+    if not fname:
+        print 'Unrecognized card ID: %s' % exp_key
+        return
 
-    print "Accessed HS API FOR CARD %s, response is: " % card_id
-    print response.json()
+    jsonFile = open('../expansions/' + fname, 'r')
+    ogJson = json.loads(jsonFile.read())
+    card = None
+    for card_desc in ogJson.values()[0]:
+        if card_desc['cardId'] == card_id:
+            card = card_desc
+            break
+
+    if not card:
+        print 'No card was found'
+        return
+
+    openedStatsFile = open('../data/cardsOpened.dat', 'r+')
+    # fix this logic
+    # if openedStatsFile.read():
+    content = openedStatsFile.read()
+
+    openedJson = json.loads(content)
+
+    # else:
+    #     openedJson = {}
+
+    previousStats = openedJson.get(card['name'],  0)
+    previousStats += 1
+    openedJson[card['name']] = previousStats
+    openedStatsFile.write(json.dumps(openedJson))
+    print 'Cards file updated'
+
 
     global cardsOpened, packsOpened
 
@@ -35,7 +75,11 @@ def processCardGained(lineString):
 
     if cardsOpened % 4 == 0:
         packsOpened += 1
-        #update the pack opened json
+        packsFile = open('../data/packStats.dat', 'r+')
+        packsJson = json.loads(packsFile.read())
+        packsJson['packs opened'] = packsJson['packs opened'] + 1
+        packsFile.write(json.dumps(packsJson))
+        print 'packs updated'
 
 
 class ChangeHandler(PatternMatchingEventHandler):
