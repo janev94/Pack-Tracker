@@ -1,22 +1,36 @@
 # import Tkinter, win32api, win32con, pywintypes
 from Tkinter import *
 
+from setuptools.command.test import test
+
 line = 0
 
 
-def changeText(event):
-    global textArea, line
+def changeText(event, textArea):
+    global line
     line += 1
     textArea.insert(END, "%s: %s" % (line, "test msg\n"))
 
-master = Tk()
-master.geometry("+5+5")
-master.wm_attributes("-topmost", True)
+
+def logMsg(ta, msg):
+    ta.insert(END, msg)
 
 
-textArea = Text(master, height=12, width=50)
-textArea.pack()
+def setupOverlay():
+    master = Tk()
+    master.geometry("+5+5")
+    master.wm_attributes("-topmost", True)
 
-master.bind("<Button-1>", changeText)
+    textArea = Text(master, height=12, width=50)
+    textArea.pack()
 
-mainloop()
+    master.bind("<Button-1>", lambda event, ta=textArea: changeText(event, ta))
+
+    return textArea
+
+
+def start():
+    mainloop()
+
+if __name__ == '__main__':
+    setupOverlay()

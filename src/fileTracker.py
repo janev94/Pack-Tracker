@@ -26,6 +26,8 @@ exp_lookup = {
 # for card gained, the event info is in the form:
 # [name=CARD_NAME cardId=CARD_ID type=CARD_TYPE]
 def processCardGained(lineString):
+    print "Raw string of card gain: %s" % lineString
+    GUI.logMsg(ta, "Raw string of card gain: %s" % lineString)
     cardId_regex = re.search("cardId=(.*) type=", lineString)
     card_id = cardId_regex.group(1)
     exp_key = card_id[:card_id.index('_')]
@@ -101,6 +103,8 @@ class ChangeHandler(PatternMatchingEventHandler):
         # DO UPLOAD HERE
 
     def on_modified(self, event):
+        print '########Mofified file: %s' % event.src_path
+
         if 'Achievements.log' in event.src_path:
 
             logfile = open(event.src_path, "r")
@@ -109,6 +113,7 @@ class ChangeHandler(PatternMatchingEventHandler):
                 if 'NotifyOfCardGained' in line:
                     processCardGained(line)
                 print "LINE: ", line,
+                GUI.logMsg(ta, "Achievements line: %s \n" % line)
 
         self.process(event)
 
@@ -131,6 +136,7 @@ def follow(thefile):
             continue
         yield line
 
+ta = None
 
 if __name__ == '__main__':
     f = open('../packTracker.cfg', 'r')
@@ -153,5 +159,14 @@ if __name__ == '__main__':
     observer.schedule(ChangeHandler(), path=path,
                       recursive=True)
     observer.start()
+
+    import GUI
+
+    ta = GUI.setupOverlay()
+
+    print 'Done Setup'
+
+    GUI.start()
+
     while True:
         time.sleep(1)
